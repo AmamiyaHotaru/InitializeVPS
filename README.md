@@ -6,3 +6,13 @@
 - 安装并配置fail2ban
 - 设置swap
 - 防火墙配置
+
+确保安装了curl 
+```bash
+apt install curl -y
+```
+一键执行
+```bash
+
+bash <(curl -sL https://github.com/AmamiyaHotaru/InitializeVPS/blob/main/init.sh)
+```
