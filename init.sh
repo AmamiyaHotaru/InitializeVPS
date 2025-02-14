@@ -1003,10 +1003,10 @@ if [ -n "$NEW_USERNAME" ]; then
 fi
 
 print_header "Swap 状态"
-if swapon -s | grep -q "/swapfile"; then
+if swapon -s | grep "/swapfile"; then
     swap_size=$(swapon -s | grep "/swapfile" | awk '{print $3}')
     print_success "Swap 已启用"
-    print_info "大小: $((swap_size/1024/1024))GB"
+    print_info "大小: $((swap_size/1024))MB"
 else
     print_warning "未配置 Swap"
 fi
