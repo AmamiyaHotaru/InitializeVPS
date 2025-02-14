@@ -195,12 +195,12 @@ create_sudo_user() {
     return 0
 }
 
-# 添加 swap 配置函数
+# 修改 setup_swap 函数
 setup_swap() {
-    local swap_size="$1"  # 以GB为单位
+    local swap_size="$1"  # 以MB为单位
     local swapfile="/swapfile"
 
-    echo "配置 swap 空间 (${swap_size}GB)..."
+    echo "配置 swap 空间 (${swap_size}MB)..."
 
     # 检查是否已存在 swap
     if swapon -s | grep -q "$swapfile"; then
@@ -215,7 +215,7 @@ setup_swap() {
 
     # 创建 swap 文件
     echo "创建 swap 文件..."
-    dd if=/dev/zero of="$swapfile" bs=1G count="$swap_size" || {
+    dd if=/dev/zero of="$swapfile" bs=1M count="$swap_size" || {
         echo "创建 swap 文件失败"
         return 1
     }
@@ -559,36 +559,17 @@ else
     echo "日志清理已配置，跳过"
 fi
 
-# 添加用户管理配置（在 SSH 配置之前）
-echo "用户管理配置..."
-read -p "是否创建新的管理用户？[y/N]: " CREATE_USER
-if [[ $CREATE_USER =~ ^[Yy]$ ]]; then
-    while true; do
-        read -p "请输入新用户名: " NEW_USERNAME
-        if [[ $NEW_USERNAME =~ ^[a-z][-a-z0-9]*$ ]]; then
-            if create_sudo_user "$NEW_USERNAME"; then
-                # 禁用 root SSH 登录
-                sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-                echo "已禁用 root SSH 登录"
-                break
-            fi
-        else
-            echo "无效的用户名，请使用小写字母开头，只包含小写字母、数字和横杠"
-        fi
-    done
-fi
-
 # 添加 Swap 配置（在用户管理之后，SSH 配置之前）
 echo "Swap 配置..."
 read -p "是否配置 swap 空间？[y/N]: " SETUP_SWAP
 if [[ $SETUP_SWAP =~ ^[Yy]$ ]]; then
     while true; do
-        read -p "请输入要创建的 swap 大小(GB): " SWAP_SIZE
-        if [[ $SWAP_SIZE =~ ^[0-9]+$ ]] && [ "$SWAP_SIZE" -gt 0 ] && [ "$SWAP_SIZE" -le 32 ]; then
+        read -p "请输入要创建的 swap 大小(MB): " SWAP_SIZE
+        if [[ $SWAP_SIZE =~ ^[0-9]+$ ]] && [ "$SWAP_SIZE" -gt 0 ] && [ "$SWAP_SIZE" -le 32768 ]; then
             setup_swap "$SWAP_SIZE"
             break
         else
-            echo "请输入 1-32 之间的整数"
+            echo "请输入 1-32768 之间的整数（最大32GB）"
         fi
     done
 fi
@@ -862,6 +843,26 @@ EOF
     echo "=========================="
 fi
 
+# 添加用户管理配置（在 SSH 配置之后）
+echo "用户管理配置..."
+read -p "是否创建新的管理用户？[y/N]: " CREATE_USER
+if [[ $CREATE_USER =~ ^[Yy]$ ]]; then
+    while true; do
+        read -p "请输入新用户名: " NEW_USERNAME
+        if [[ $NEW_USERNAME =~ ^[a-z][-a-z0-9]*$ ]]; then
+            if create_sudo_user "$NEW_USERNAME"; then
+                # 更新SSH配置以禁用root登录
+                sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+                systemctl restart ssh
+                echo "已禁用 root SSH 登录"
+                break
+            fi
+        else
+            echo "无效的用户名，请使用小写字母开头，只包含小写字母、数字和横杠"
+        fi
+    done
+fi
+
 # 检查服务状态
 echo "检查服务状态..."
 SERVICE_CHECK_FAILED=false
@@ -899,6 +900,11 @@ else
         echo "建议执行以下命令配置防火墙："
         echo "ufw allow ${NEW_SSH_PORT:-22}/tcp"
         echo "ufw enable"
+    fi
+    
+    # 检查必要端口
+    if ! ufw status | grep -q "^$FINAL_SSH_PORT/tcp"; then
+        print_warning "SSH 端口 $FINAL_SSH_PORT 未在防火墙中配置"
     fi
 fi
 
