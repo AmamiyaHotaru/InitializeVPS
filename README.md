@@ -14,5 +14,5 @@ apt install curl -y
 一键执行
 ```bash
 
-bash <(curl -sL https://github.com/AmamiyaHotaru/InitializeVPS/blob/main/init.sh)
+bash <(curl -sL https://raw.githubusercontent.com/AmamiyaHotaru/InitializeVPS/refs/heads/main/init.sh)
 ```
