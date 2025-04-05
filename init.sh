@@ -332,22 +332,22 @@ upgrade_python() {
                 "10")
                     echo "deb http://deb.debian.org/debian buster-backports main" > /etc/apt/sources.list.d/backports.list
                     apt update
-                    apt -t buster-backports install -y python3.9 python3.9-dev python3.9-venv
+                    apt -t buster-backports install -y python3
                     ;;
                 "11"|"12")
                     apt update
-                    apt install -y python3.9 python3.9-dev python3.9-venv
+                    apt install -y python3
                     ;;
             esac
             ;;
         "ubuntu")
             add-apt-repository -y ppa:deadsnakes/ppa
             apt update
-            apt install -y python3.9 python3.9-dev python3.9-venv
+            apt install -y python3
             ;;
     esac
     
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3 1
 }
 
 # 添加 Python 依赖修复函数
