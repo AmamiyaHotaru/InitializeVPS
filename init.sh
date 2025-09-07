@@ -30,7 +30,7 @@ apt install -y net-tools || {
 # 函数定义
 check_command() {
     command -v "$1" >/dev/null 2>&1 || {
-        echo "错误：未找到命 $1"
+        echo "错误：未找到命令 $1"
         exit 1
     }
 }
@@ -82,13 +82,6 @@ check_installed() {
         return 0
     fi
     return 1
-}
-
-# 添加 Python 版本检测函数（在函数定义部分）
-get_python_version() {
-    local py_version
-    py_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-    echo "$py_version"
 }
 
 # 修改防火墙规则检查函数
@@ -301,78 +294,22 @@ else
     echo "警告：无法找到上海时区文件"
 fi
 
-# 修改 Python 版本检测函数
-check_python_version() {
-    local current_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    # 将版本号分解为主版本和次版本
-    local required_major=3
-    local required_minor=9
-    local current_major=$(echo $current_version | cut -d. -f1)
-    local current_minor=$(echo $current_version | cut -d. -f2)
-    
-    # 先比较主版本，如果主版本相同则比较次版本
-    if [ "$current_major" -gt "$required_major" ] || 
-       ([ "$current_major" -eq "$required_major" ] && [ "$current_minor" -ge "$required_minor" ]); then
-        echo "当前 Python 版本 ($current_version) 满足要求"
-        return 0
-    else
-        echo "当前 Python 版本 ($current_version) 低于要求的 3.9"
-        return 1
-    fi
-}
-
-# 添加 Python 升级函数
-upgrade_python() {
-    local os_id=$(. /etc/os-release && echo "$ID")
-    local os_version=$(. /etc/os-release && echo "$VERSION_ID")
-    
-    case "$os_id" in
-        "debian")
-            case "$os_version" in
-                "10")
-                    echo "deb http://deb.debian.org/debian buster-backports main" > /etc/apt/sources.list.d/backports.list
-                    apt update
-                    apt -t buster-backports install -y python3
-                    ;;
-                "11"|"12")
-                    apt update
-                    apt install -y python3
-                    ;;
-            esac
-            ;;
-        "ubuntu")
-            add-apt-repository -y ppa:deadsnakes/ppa
-            apt update
-            apt install -y python3
-            ;;
-    esac
-    
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3 1
-}
-
-# 添加 Python 依赖修复函数
-fix_python_deps() {
-    echo "修复 Python 依赖..."
-    # 修复 apt_pkg 模块
-    if ! python3 -c "import apt_pkg" 2>/dev/null; then
-        echo "重新安装 python3-apt 以修复 apt_pkg 模块..."
-        apt-get remove --purge -y python3-apt
-        apt-get install -y python3-apt
-    fi
-}
-
-# 在环境检查后添加 Python 版本检查
-echo "检查 Python 版本要求..."
-if ! check_python_version; then
-    echo "正在升级 Python..."
-    upgrade_python
-    if ! check_python_version; then
-        echo "Python 版本升级失败"
+# 简化的Python检查和安装部分
+echo "检查 Python 是否已安装..."
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Python3 未安装，开始安装..."
+    apt update
+    apt install -y python3 python3-pip || {
+        echo "Python3 安装失败"
         exit 1
-    fi
-    echo "Python 已成功升级到 3.9+"
-    fix_python_deps
+    }
+    echo "Python3 安装完成"
+else
+    echo "Python3 已安装"
 fi
+
+# 显示安装的Python版本
+python3 --version
 
 # 检查 netstat 命令
 if ! command -v netstat &> /dev/null; then
@@ -390,13 +327,6 @@ apt install -y fail2ban python3-virtualenv git curl netstat-nat || {
     echo "依赖安装失败，请检查系统配置"
     exit 1
 }
-
-# 检查 Python 环境
-if ! python3 -c "import distutils" 2>/dev/null; then
-    echo "正在安装 Python 兼容环境..."
-    apt install -y python3.7 python3.7-distutils
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
-fi
 
 apt upgrade -y
 apt install -y fail2ban python3-virtualenv git curl netstat-nat
